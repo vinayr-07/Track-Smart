@@ -1,0 +1,63 @@
+name: track_smart
+description: Track Smart - A comprehensive Flutter application for tracking student fee payments with JSON backup/restore, payment history, and batch management.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.1
+
+  # Database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+
+  # File operations
+  file_picker: ^8.1.6
+  path_provider: ^2.1.1
+
+  # Date and Time handling
+  intl: ^0.18.1
+
+  # Local storage
+  shared_preferences: ^2.2.2
+
+  # Utilities
+  uuid: ^4.2.1
+
+  # Phone calling functionality
+  url_launcher: ^6.2.2
+
+  # UI Components
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  web:
+    generate: false
+  windows:
+    generate: false
