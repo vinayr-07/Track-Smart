@@ -20,7 +20,7 @@
 
 ## 📦 Download APK
 
-➡️ [**Click here to download the latest APK**](https://github.com/vinayr-7/Track-Smart/releases)  
+➡️ [**Click here to download the latest APK**](https://github.com/vinayr-07/Track-Smart/releases)  
 (Located under the **Releases** section of this repository)
 
 ---
@@ -61,7 +61,6 @@
 ## 🙏 Acknowledgement
 
 - 💡 **Perplexity AI** — for code generation and development help
-- 📚 Flutter documentation & package maintainers
 
 ---
 
