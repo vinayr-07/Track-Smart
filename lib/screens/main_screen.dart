@@ -19,10 +19,9 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
-  late TabController _tabController;
   late TabController _batchController;
   late PageController _pageController;
-  int _currentTabIndex = 0;
+  int _currentTabIndex = 0; // Now controls bottom navigation
   int _currentBatchIndex = 0;
 
   bool _isSearchVisible = false;
@@ -32,19 +31,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _batchController = TabController(length: 2, vsync: this);
 
     _pageController = PageController(
       initialPage: 0,
       viewportFraction: 1.0,
     );
-
-    _tabController.addListener(() {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    });
 
     _batchController.addListener(() {
       setState(() {
@@ -67,7 +59,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _tabController.dispose();
     _batchController.dispose();
     _pageController.dispose();
     _searchController.dispose();
@@ -88,13 +79,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               : _buildSelectionAppBar(viewModel),
           body: Column(
             children: [
-              if (_currentTabIndex < 2) ...[
-                _buildTabBar(),
-                if (!_isSearchVisible) _buildBatchTabs(),
-              ] else ...[
-                _buildTabBar(),
-                if (!_isSearchVisible) _buildBatchTabs(),
-              ],
+              if (!_isSearchVisible) _buildBatchTabs(),
               if (_isSearchVisible) _buildPopupSearchBar(viewModel),
               Expanded(
                 child: viewModel.isLoading
@@ -105,9 +90,10 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
+          bottomNavigationBar: _buildBottomNavigationBar(),
           floatingActionButton: viewModel.selectedStudentIds.isEmpty && !_isSearchVisible
               ? FloatingActionButton(
-            onPressed: () => _showStudentDetailsSheet(context, null),
+            onPressed: () => _showAddStudentSheet(),
             child: const Icon(Icons.add),
           )
               : null,
@@ -118,6 +104,10 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildMainAppBar(StudentViewModel viewModel) {
     final monthFormatter = DateFormat('MMMM yyyy');
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    final selectedMonth = DateTime(viewModel.selectedDate.year, viewModel.selectedDate.month);
+    final isCurrentOrFutureMonth = selectedMonth.isAtSameMomentAs(currentMonth) || selectedMonth.isAfter(currentMonth);
 
     return AppBar(
       title: Column(
@@ -128,6 +118,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               IconButton(
                 onPressed: viewModel.goToPreviousMonth,
                 icon: const Icon(Icons.chevron_left),
+                tooltip: 'Previous Month',
               ),
               Expanded(
                 child: Center(
@@ -140,15 +131,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                 ),
               ),
               IconButton(
-                onPressed: DateTime.now().isAfter(viewModel.selectedDate)
-                    ? viewModel.goToNextMonth
-                    : null,
+                onPressed: isCurrentOrFutureMonth ? null : viewModel.goToNextMonth,
                 icon: Icon(
                   Icons.chevron_right,
-                  color: DateTime.now().isAfter(viewModel.selectedDate)
-                      ? null
-                      : Colors.grey,
+                  color: isCurrentOrFutureMonth
+                      ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3)
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
+                tooltip: isCurrentOrFutureMonth
+                    ? 'Cannot navigate to future months'
+                    : 'Next Month',
               ),
             ],
           ),
@@ -191,13 +183,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           tooltip: viewModel.isFeesVisible ? 'Hide Fee Amounts' : 'Show Fee Amounts',
         ),
 
-        PopupMenuButton(
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              onTap: () => _showSettingsDialog(context),
-              child: const Text('Settings'),
-            ),
-          ],
+        // UPDATED: Direct settings button instead of popup menu
+        IconButton(
+          onPressed: () => _showSettingsDialog(context),
+          icon: const Icon(Icons.more_vert),
+          tooltip: 'Settings',
         ),
       ],
     );
@@ -220,13 +210,109 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTabBar() {
-    return TabBar(
-      controller: _tabController,
-      tabs: const [
-        Tab(text: 'Paid'),
-        Tab(text: 'Unpaid'),
-        Tab(text: 'Students'),
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      currentIndex: _currentTabIndex,
+      onTap: (index) {
+        setState(() {
+          _currentTabIndex = index;
+        });
+      },
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Theme.of(context).colorScheme.primary,
+      unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      elevation: 8,
+      selectedFontSize: 12,
+      unselectedFontSize: 11,
+      items: [
+        BottomNavigationBarItem(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _currentTabIndex == 0
+                  ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.check_circle,
+              color: _currentTabIndex == 0
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          label: 'Paid',
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+        BottomNavigationBarItem(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _currentTabIndex == 1
+                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.pending,
+              color: _currentTabIndex == 1
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          label: 'Unpaid',
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.pending,
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ),
+        BottomNavigationBarItem(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _currentTabIndex == 2
+                  ? Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.people,
+              color: _currentTabIndex == 2
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          label: 'Students',
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.people,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -427,7 +513,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                 }
               },
               onDelete: (id) => _showDeleteConfirmation(context, id),
-              onEdit: (student) => _showStudentDetailsSheet(context, student),
+              onEdit: (student) => _showStudentDetailsSheet(context, studentWithStatus.student),
               onLongPress: (id) => viewModel.toggleStudentSelection(id),
               onTap: (id) {
                 if (viewModel.selectedStudentIds.isNotEmpty) {
@@ -554,7 +640,15 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         currentList = paidStudents;
         break;
       case 1:
+      // Sort unpaid students with overdue first
         currentList = unpaidStudents;
+        currentList.sort((a, b) {
+          // Overdue students first (true comes before false)
+          if (a.isOverdue && !b.isOverdue) return -1;
+          if (!a.isOverdue && b.isOverdue) return 1;
+          // If both have same overdue status, sort alphabetically by name
+          return a.student.name.toLowerCase().compareTo(b.student.name.toLowerCase());
+        });
         break;
       case 2:
       default:
@@ -691,6 +785,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
     final viewModel = Provider.of<StudentViewModel>(context, listen: false);
     viewModel.updateSearchQuery('');
+  }
+
+  void _showAddStudentSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StudentDetailsSheet(
+        initialBatch: _currentBatchIndex + 1,
+      ),
+    );
   }
 
   void _showStudentDetailsSheet(BuildContext context, Student? student) {

@@ -27,14 +27,14 @@
 
 ## 📸 Screenshots
 
-### ✅ Paid Tab - Batch 1
-![Paid Tab Batch 1](screenshots/paid_tab_batch1.png)
-
-### ✅ Paid Tab - Batch 2
-![Paid Tab Batch 2](screenshots/paid_tab_batch2.png)
+### ✅ Paid Tab
+![Paid Tab](screenshots/paid_tab.png)
 
 ### ❌ Unpaid Tab
 ![Unpaid Tab](screenshots/unpaid_tab.png)
+
+### ✅ History 
+![History](screenshots/history.png)
 
 ### ⚙️ Settings Page
 ![Settings](screenshots/settings.png)
@@ -52,7 +52,7 @@
 
 ## 🧠 Developer Insight
 
-> I designed this app completely from scratch for a tuition teacher, based on their real-world needs.  
+> I designed this app completely from scratch for my former tuition teacher, based on their real-world needs.  
 > While I had no prior experience in Android development, I used AI tools to convert my ideas into working, production-ready code.  
 > This is a proof of concept that creativity, logic, and AI together can build real software solutions.
 
