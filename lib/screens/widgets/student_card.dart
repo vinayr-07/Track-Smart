@@ -69,33 +69,36 @@ class StudentCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: batchColors.batchIndicator,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.group,
-                            size: 12,
-                            color: batchColors.batchIndicatorText,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Batch ${student.batch}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                    // Show batch indicator only for non-Students tabs
+                    if (!isStudentsTab)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: batchColors.batchIndicator,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.group,
+                              size: 12,
                               color: batchColors.batchIndicatorText,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              'Batch ${student.batch}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: batchColors.batchIndicatorText,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                     const Spacer(),
+                    // Show status chip only for non-Students tabs
                     if (!isStudentsTab)
                       _StatusChip(
                         isPaid: studentWithStatus.isPaid,
@@ -149,25 +152,102 @@ class StudentCard extends StatelessWidget {
   Widget _buildStudentsTabLayout(BuildContext context, Student student, BatchColors batchColors) {
     return Consumer<StudentViewModel>(
       builder: (context, viewModel, child) {
-        return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                student.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+            // Top row: Student name and status chip on same line
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    student.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-              ),
+                // Status chip on same line as name
+                _StatusChip(
+                  isPaid: studentWithStatus.isPaid,
+                  isOverdue: studentWithStatus.isOverdue,
+                ),
+              ],
             ),
-            _buildFeeDisplay(
-              context,
-              '₹${student.fee.toStringAsFixed(0)}',
-              viewModel.isFeesVisible,
-              Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: batchColors.accentColor,
-              ),
+            const SizedBox(height: 8),
+            // Main row: Batch indicator, action buttons, and fee
+            Row(
+              children: [
+                // Batch indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: batchColors.batchIndicator,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.group,
+                        size: 12,
+                        color: batchColors.batchIndicatorText,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Batch ${student.batch}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: batchColors.batchIndicatorText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Action buttons
+                IconButton(
+                  onPressed: () => onEdit(student),
+                  icon: const Icon(Icons.edit),
+                  iconSize: 18,
+                  tooltip: 'Edit Student',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+                if (student.contact != null && student.contact!.isNotEmpty)
+                  IconButton(
+                    onPressed: () => _makePhoneCall(student.contact!),
+                    icon: const Icon(Icons.phone),
+                    iconSize: 18,
+                    color: batchColors.accentColor,
+                    tooltip: 'Call ${student.contact}',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                IconButton(
+                  onPressed: () => onDelete(student.id),
+                  icon: Icon(
+                    Icons.delete,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  iconSize: 18,
+                  tooltip: 'Delete Student',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+                const Spacer(),
+                // Fee display
+                _buildFeeDisplay(
+                  context,
+                  '₹${student.fee.toStringAsFixed(0)}',
+                  viewModel.isFeesVisible,
+                  Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: batchColors.accentColor,
+                  ),
+                ),
+              ],
             ),
           ],
         );

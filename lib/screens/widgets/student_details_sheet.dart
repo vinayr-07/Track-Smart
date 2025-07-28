@@ -6,7 +6,7 @@ import '../../models/student.dart';
 
 class StudentDetailsSheet extends StatefulWidget {
   final Student? student;
-  final int? initialBatch; // NEW: Optional parameter for default batch
+  final int? initialBatch;
 
   const StudentDetailsSheet({super.key, this.student, this.initialBatch});
 
@@ -22,10 +22,10 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
   final _notesController = TextEditingController();
 
   String _paymentType = 'Cash';
-  late int _selectedBatch; // Changed to late initialization
+  late int _selectedBatch;
   DateTime _joiningDate = DateTime.now();
 
-  // FIXED: Made fields final
+  // For previous months payment tracking
   final List<String> _previousMonths = [];
   final Map<String, bool> _monthPaymentStatus = {};
 
@@ -320,124 +320,6 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
                             child: Text(DateFormat('MMM d, yyyy').format(_joiningDate)),
                           ),
                         ),
-
-                        if (_previousMonths.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Card(
-                            // FIXED: Replace withOpacity with withValues
-                            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.payment,
-                                        color: Theme.of(context).colorScheme.primary,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Previous Month Payments',
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Mark which months this student has already paid:',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                  const SizedBox(height: 12),
-
-                                  ...(_previousMonths.map((monthStr) {
-                                    final monthDate = DateFormat('yyyy-MM').parse(monthStr);
-                                    final monthName = DateFormat('MMMM yyyy').format(monthDate);
-                                    final isPaid = _monthPaymentStatus[monthStr] ?? false;
-
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: isPaid
-                                          // FIXED: Replace withOpacity with withValues
-                                              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
-                                              : Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: isPaid
-                                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                                                : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              isPaid ? Icons.check_circle : Icons.schedule,
-                                              size: 18,
-                                              color: isPaid
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : Theme.of(context).colorScheme.error,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    monthName,
-                                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '₹${_feeController.text.isNotEmpty ? _feeController.text : "0"}',
-                                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                      color: Theme.of(context).colorScheme.primary,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Text(
-                                              isPaid ? 'Paid' : 'Unpaid',
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: isPaid
-                                                    ? Theme.of(context).colorScheme.primary
-                                                    : Theme.of(context).colorScheme.error,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Switch(
-                                              value: isPaid,
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  _monthPaymentStatus[monthStr] = value;
-                                                });
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList()),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentType,
@@ -525,37 +407,241 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
     if (date != null) {
       setState(() {
         _joiningDate = date;
-        _calculatePreviousMonths();
       });
-    }
-  }
 
-  void _calculatePreviousMonths() {
-    final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month);
-    final joiningMonth = DateTime(_joiningDate.year, _joiningDate.month);
+      // NEW: Check if selected date is previous month and show popup
+      final selectedMonth = DateTime(date.year, date.month);
+      final currentMonth = DateTime(now.year, now.month);
 
-    _previousMonths.clear();
-    _monthPaymentStatus.clear();
-
-    final viewModel = Provider.of<StudentViewModel>(context, listen: false);
-    final selectedMonth = DateTime(viewModel.selectedDate.year, viewModel.selectedDate.month);
-
-    if (widget.student == null && selectedMonth.isAtSameMomentAs(currentMonth)) {
-      var checkMonth = joiningMonth;
-
-      while (checkMonth.isBefore(currentMonth)) {
-        final monthStr = DateFormat('yyyy-MM').format(checkMonth);
-        _previousMonths.add(monthStr);
-        _monthPaymentStatus[monthStr] = false;
-        checkMonth = DateTime(checkMonth.year, checkMonth.month + 1);
+      if (widget.student == null && selectedMonth.isBefore(currentMonth)) {
+        await _showPreviousMonthsPaymentDialog();
       }
     }
   }
 
-  // NEW: Method to generate changes summary
+  // NEW: Show prominent centered popup for previous months payment
+  Future<void> _showPreviousMonthsPaymentDialog() async {
+    // Calculate previous months
+    final currentMonth = DateTime.now();
+    final joiningMonth = DateTime(_joiningDate.year, _joiningDate.month);
+
+    final tempPreviousMonths = <String>[];
+    final tempMonthPaymentStatus = <String, bool>{};
+
+    var checkMonth = joiningMonth;
+    while (checkMonth.isBefore(currentMonth)) {
+      final monthStr = DateFormat('yyyy-MM').format(checkMonth);
+      tempPreviousMonths.add(monthStr);
+      tempMonthPaymentStatus[monthStr] = false;
+      checkMonth = DateTime(checkMonth.year, checkMonth.month + 1);
+    }
+
+    if (tempPreviousMonths.isEmpty) return;
+
+    // Create scroll controller for auto-scroll
+    final scrollController = ScrollController();
+
+    // Show the prominent centered dialog
+    final result = await showDialog<Map<String, bool>>(
+      context: context,
+      barrierDismissible: false, // Make it prominent - user must interact
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // Auto-scroll to toggles after dialog is built
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (scrollController.hasClients) {
+                scrollController.animateTo(
+                  150, // Scroll down to show toggles prominently
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                );
+              }
+            });
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.payment,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Previous Months Payment',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.5, // Make it prominent
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Student joined in a previous month',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Please mark which previous months this student has already paid:',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Previous Months (${tempPreviousMonths.length})',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // THE MAIN ATTRACTION - Payment Toggles
+                      ...tempPreviousMonths.map((monthStr) {
+                        final monthDate = DateFormat('yyyy-MM').parse(monthStr);
+                        final monthName = DateFormat('MMMM yyyy').format(monthDate);
+                        final isPaid = tempMonthPaymentStatus[monthStr] ?? false;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: isPaid
+                                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
+                                : Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isPaid
+                                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                                  : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isPaid
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.error,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isPaid ? Icons.check_circle : Icons.schedule,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            title: Text(
+                              monthName,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '₹${_feeController.text.isNotEmpty ? _feeController.text : "0"}',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            trailing: Transform.scale(
+                              scale: 1.2, // Make toggle more prominent
+                              child: Switch(
+                                value: isPaid,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    tempMonthPaymentStatus[monthStr] = value;
+                                  });
+                                },
+                                activeColor: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(null),
+                  child: Text(
+                    'Skip',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(tempMonthPaymentStatus),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('Save Payment Status'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    // If user saved the payment status, update the local state
+    if (result != null) {
+      setState(() {
+        _previousMonths.clear();
+        _monthPaymentStatus.clear();
+        _previousMonths.addAll(result.keys);
+        _monthPaymentStatus.addAll(result);
+      });
+    }
+  }
+
+  // Existing methods for change summary and confirmation dialogs...
   String? _getChangesSummary() {
-    if (widget.student == null) return null; // No comparison for new students
+    if (widget.student == null) return null;
 
     final changes = <String>[];
     final formattedDate = DateFormat('MMM d, yyyy', 'en_US').format(_joiningDate);
@@ -563,7 +649,6 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
     final newContact = _contactController.text.trim().isEmpty ? null : _contactController.text.trim();
     final newNotes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
 
-    // Compare each field
     if (widget.student!.name != _nameController.text.trim()) {
       changes.add("Name: '${widget.student!.name}' → '${_nameController.text.trim()}'");
     }
@@ -601,12 +686,10 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
     return "You are changing the following information:\n\n${changes.join('\n')}\n\nDo you want to proceed?";
   }
 
-  // NEW: Show confirmation dialog for edits
   Future<bool> _showEditConfirmationDialog() async {
     final changesSummary = _getChangesSummary();
 
     if (changesSummary == null) {
-      // No changes detected
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('No changes detected'),
@@ -667,13 +750,11 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
     return confirmed ?? false;
   }
 
-  // UPDATED: Modified save method with confirmation for edits
   void _saveStudent() async {
     if (_formKey.currentState!.validate()) {
-      // If editing an existing student, show confirmation dialog
       if (widget.student != null) {
         final confirmed = await _showEditConfirmationDialog();
-        if (!confirmed) return; // User cancelled
+        if (!confirmed) return;
       }
 
       final viewModel = Provider.of<StudentViewModel>(context, listen: false);
@@ -681,7 +762,6 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
       final fee = double.parse(_feeController.text);
 
       if (widget.student == null) {
-        // Add new student
         viewModel.addStudent(
           name: _nameController.text.trim(),
           fee: fee,
@@ -693,7 +773,6 @@ class _StudentDetailsSheetState extends State<StudentDetailsSheet> {
           previousMonthPayments: _monthPaymentStatus,
         );
       } else {
-        // Update existing student
         viewModel.updateStudent(
           id: widget.student!.id,
           name: _nameController.text.trim(),

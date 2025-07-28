@@ -80,6 +80,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           body: Column(
             children: [
               if (!_isSearchVisible) _buildBatchTabs(),
+              if (!_isSearchVisible && _currentTabIndex != 2) _buildPaymentSummaryBox(viewModel),
               if (_isSearchVisible) _buildPopupSearchBar(viewModel),
               Expanded(
                 child: viewModel.isLoading
@@ -183,11 +184,42 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           tooltip: viewModel.isFeesVisible ? 'Hide Fee Amounts' : 'Show Fee Amounts',
         ),
 
-        // UPDATED: Direct settings button instead of popup menu
-        IconButton(
-          onPressed: () => _showSettingsDialog(context),
+        // UPDATED: Back to popup menu with Settings and Summary options
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            switch (value) {
+              case 'settings':
+                _showSettingsDialog(context);
+                break;
+              case 'summary':
+                _showSummaryDialog(context);
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Icons.settings),
+                  SizedBox(width: 12),
+                  Text('Settings'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'summary',
+              child: Row(
+                children: [
+                  Icon(Icons.analytics),
+                  SizedBox(width: 12),
+                  Text('Summary'),
+                ],
+              ),
+            ),
+          ],
           icon: const Icon(Icons.more_vert),
-          tooltip: 'Settings',
+          tooltip: 'More options',
         ),
       ],
     );
@@ -360,6 +392,65 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSummaryBox(StudentViewModel viewModel) {
+    // Get current batch number (1 or 2)
+    final currentBatch = _currentBatchIndex + 1;
+
+    // Filter students by current batch
+    final batchStudents = viewModel.studentsWithStatus
+        .where((s) => s.student.batch == currentBatch)
+        .toList();
+
+    final totalStudents = batchStudents.length;
+
+    if (totalStudents == 0) {
+      return const SizedBox.shrink(); // Don't show if no students
+    }
+
+    // Calculate statistics based on current tab
+    String summaryText;
+    Color backgroundColor;
+    Color textColor;
+
+    if (_currentTabIndex == 0) {
+      // Paid tab
+      final paidCount = batchStudents.where((s) => s.isPaid).length;
+      final needToPay = totalStudents - paidCount;
+      summaryText = '$paidCount paid out of $totalStudents students ($needToPay still needs to pay)';
+      backgroundColor = Theme.of(context).colorScheme.primaryContainer;
+      textColor = Theme.of(context).colorScheme.onPrimaryContainer;
+    } else {
+      // Unpaid tab
+      final unpaidCount = batchStudents.where((s) => !s.isPaid).length;
+      final alreadyPaid = totalStudents - unpaidCount;
+      summaryText = '$unpaidCount unpaid out of $totalStudents students ($alreadyPaid already paid)';
+      backgroundColor = Theme.of(context).colorScheme.errorContainer;
+      textColor = Theme.of(context).colorScheme.onErrorContainer;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // REDUCED: from vertical: 8 to 4
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // REDUCED: from vertical: 12 to 8
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _currentTabIndex == 0
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        summaryText,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -665,7 +756,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(
         left: 16,
         right: 16,
-        top: 16,
+        top: 8,      // REDUCED: from 16 to 8
         bottom: 100,
       ),
       itemCount: currentList.length,
@@ -809,6 +900,105 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => const SettingsDialog(),
+    );
+  }
+
+  void _showSummaryDialog(BuildContext context) {
+    final viewModel = Provider.of<StudentViewModel>(context, listen: false);
+
+    // Calculate exact revenue based on actual student fees
+    double totalExpectedRevenue = 0;
+    double collectedRevenue = 0;
+    double pendingRevenue = 0;
+
+    for (var studentWithStatus in viewModel.studentsWithStatus) {
+      final studentFee = studentWithStatus.student.fee;
+      totalExpectedRevenue += studentFee;
+
+      if (studentWithStatus.isPaid) {
+        collectedRevenue += studentFee;
+      } else {
+        pendingRevenue += studentFee;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.analytics),
+            SizedBox(width: 8),
+            Text('Summary'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSummarySection(
+                'Current Month Overview',
+                [
+                  'Total Students: ${viewModel.allStudents.length}',
+                  'Batch 1: ${viewModel.allStudents.where((s) => s.batch == 1).length}',
+                  'Batch 2: ${viewModel.allStudents.where((s) => s.batch == 2).length}',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSummarySection(
+                'Payment Status',
+                [
+                  'Paid: ${viewModel.studentsWithStatus.where((s) => s.isPaid).length}',
+                  'Unpaid: ${viewModel.studentsWithStatus.where((s) => !s.isPaid).length}',
+                  'Overdue: ${viewModel.studentsWithStatus.where((s) => s.isOverdue).length}',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSummarySection(
+                'Monthly Revenue',
+                [
+                  'Total Expected: ${viewModel.isFeesVisible ? "₹${totalExpectedRevenue.toStringAsFixed(0)}" : "Hidden"}',
+                  'Collected: ${viewModel.isFeesVisible ? "₹${collectedRevenue.toStringAsFixed(0)}" : "Hidden"}',
+                  'Pending: ${viewModel.isFeesVisible ? "₹${pendingRevenue.toStringAsFixed(0)}" : "Hidden"}',
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummarySection(String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map((item) => Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.circle, size: 6),
+              const SizedBox(width: 8),
+              Expanded(child: Text(item)),
+            ],
+          ),
+        )),
+      ],
     );
   }
 
